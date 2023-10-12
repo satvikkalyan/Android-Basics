@@ -4,6 +4,6 @@
     android:id="@+id/item_title"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:textSize="40sp"
+    android:textSize="41sp"
     android:textStyle="bold|italic"
     tools:text="Test" />

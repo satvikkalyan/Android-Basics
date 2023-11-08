@@ -35,10 +35,9 @@ class MoviesAdapter(val context: Context)  :
         fun bind(movie: MovieSearchItem, context: Context) {
             binding.movieName.text = movie.Title
             if(movie.Rating!=null && movie.Rating.toFloat()>0)
-                binding.ratingBar.rating = (10/movie.Rating.toFloat())*5
+                binding.ratingBar.rating = (movie.Rating.toFloat()/10)*5
             else
                 binding.ratingBar.rating = 0F
-
             binding.time.text = movie.duration
             binding.genre.text = movie.Type
             Log.d("LOG from adapter",movie.toString())

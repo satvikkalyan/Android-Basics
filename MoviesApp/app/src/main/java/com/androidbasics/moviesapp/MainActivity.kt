@@ -5,11 +5,14 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.androidbasics.moviesapp.model.MovieDetails
-import com.androidbasics.moviesapp.model.MovieSearchResponse
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import com.androidbasics.moviesapp.model.MovieSearchItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
+import retrofit2.await
 import retrofit2.converter.gson.GsonConverterFactory
 
 private const val BASE_URL = "https://www.omdbapi.com/"
@@ -18,6 +21,7 @@ private const val API_KEY = "531b7d20"
 class MainActivity : AppCompatActivity() {
     private val TAG = "MoviesApp"
 
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -33,50 +37,49 @@ class MainActivity : AppCompatActivity() {
         val retrofit = createRetrofitInstance()
         val omdbService = retrofit.create(omniDBService::class.java)
 
-        omdbService.getMovies("Spider", API_KEY).enqueue(object : Callback<MovieSearchResponse> {
-            override fun onResponse(call: Call<MovieSearchResponse>, response: Response<MovieSearchResponse>) {
-                var respBody = response.body()?.Search?.toMutableList()
-                if (respBody != null) {
-                    for (i in 0 until respBody.size) {
-                        val movieSearchItem = respBody[i]
-                        val movieDetails = fetchMovieDetails(movieSearchItem.imdbID)
-                        if (movieDetails != null) {
-                            movieSearchItem.Type = movieDetails.Genre
-                            movieSearchItem.Rating = movieDetails.imdbRating
-                            movieSearchItem.IMDBURL = "https://www.imdb.com/title/${movieDetails.imdbID}/"
-                            movieSearchItem.duration = "${movieDetails.Runtime} MINS"
-                        }
-                        respBody[i] = movieSearchItem
-                    }
-                }
-                Log.d("Response From Main",respBody.toString())
-                adapter.submitList(respBody)
+        coroutineScope.launch {
+            try {
+                val response = omdbService.getMovies("Spider", API_KEY).await()
+                val movieSearchItems = response.Search ?: emptyList()
+                val updatedMovieSearchItems = fetchMovieDetailsForItems(movieSearchItems)
+                adapter.submitList(updatedMovieSearchItems)
+            } catch (e: Exception) {
+                handleFailure(e)
             }
-            override fun onFailure(call: Call<MovieSearchResponse>, t: Throwable) {
-                handleFailure(t)
-            }
-        })
+        }
     }
 
-    private fun fetchMovieDetails(imdbID: String): MovieDetails? {
-        var movieDetails : MovieDetails? = null;
+    private suspend fun fetchMovieDetailsForItems(items: List<MovieSearchItem>): List<MovieSearchItem> {
+        return withContext(Dispatchers.IO) {
+            val updatedItems = mutableListOf<MovieSearchItem>()
+
+            for (item in items) {
+                val movieDetails = fetchMovieDetails(item.imdbID)
+                if (movieDetails != null) {
+                    item.Type = movieDetails.Genre
+                    item.Rating = movieDetails.imdbRating
+                    item.IMDBURL = "https://www.imdb.com/title/${movieDetails.imdbID}/"
+                    item.duration = movieDetails.Runtime
+                }
+                updatedItems.add(item)
+            }
+
+            updatedItems
+        }
+    }
+
+    private suspend fun fetchMovieDetails(imdbID: String): MovieDetails? {
         val retrofit = createRetrofitInstance()
         val omdbService = retrofit.create(omniDBService::class.java)
 
-        omdbService.getMovieDetails(imdbID, API_KEY).enqueue(object : Callback<MovieDetails> {
-            override fun onResponse(call: Call<MovieDetails>, response: Response<MovieDetails>) {
-                if (response.isSuccessful) {
-                    movieDetails =  response.body()
-                } else {
-                    Log.i(TAG, "on Error")
-                }
-            }
+        try {
+            val response = omdbService.getMovieDetails(imdbID, API_KEY).await()
+            return response
+        } catch (e: Exception) {
+            Log.i(TAG, "onFailure $e")
+        }
 
-            override fun onFailure(call: Call<MovieDetails>, t: Throwable) {
-                Log.i(TAG, "onFailure $t")
-            }
-        })
-        return movieDetails
+        return null
     }
 
     private fun createRetrofitInstance(): Retrofit {
@@ -88,5 +91,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleFailure(t: Throwable) {
         Log.i(TAG, "onFailure $t")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineScope.cancel()
     }
 }

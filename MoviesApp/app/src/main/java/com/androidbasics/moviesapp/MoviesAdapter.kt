@@ -1,6 +1,8 @@
 package com.androidbasics.moviesapp
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -48,7 +50,17 @@ class MoviesAdapter(val context: Context)  :
                     )
                 )
                 .into(binding.imageView)
-
+            binding.imageButton2.setOnClickListener{
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(movie.IMDBURL))
+                it.context.startActivity(intent)
+            }
+            binding.imageButton.setOnClickListener{
+                val sharingIntent = Intent(Intent.ACTION_SEND)
+                sharingIntent.type = "text/plain"
+                sharingIntent.putExtra(Intent.EXTRA_SUBJECT, movie.Title)
+                sharingIntent.putExtra(Intent.EXTRA_TEXT, movie.IMDBURL)
+                it.context.startActivity(Intent.createChooser(sharingIntent, "Share Using"))
+            }
         }
     }
 }

@@ -1,9 +1,11 @@
 package com.androidbasics.moviesapp
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.RecyclerView
+import com.androidbasics.moviesapp.databinding.ActivityMainBinding
 import com.androidbasics.moviesapp.model.MovieDetails
 import com.androidbasics.moviesapp.model.MovieSearchItem
 import kotlinx.coroutines.CoroutineScope
@@ -20,26 +22,31 @@ private const val API_KEY = "531b7d20"
 
 class MainActivity : AppCompatActivity() {
     private val TAG = "MoviesApp"
-
+    private lateinit var binding: ActivityMainBinding
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        val recyclerView = findViewById<RecyclerView>(R.id.recycler_view)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        val recyclerView = binding.recyclerView
         val adapter = MoviesAdapter(this)
         recyclerView.adapter = adapter
-
-        initRetrofitAndFetchMovies(adapter)
+        binding.imageButton3.setOnClickListener {
+            val txtField = binding.editTextMovieTitle
+            val searchString = txtField.text.toString()
+            initRetrofitAndFetchMovies(adapter, searchString)
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(txtField.windowToken, 0)
+        }
     }
 
-    private fun initRetrofitAndFetchMovies(adapter: MoviesAdapter) {
+    private fun initRetrofitAndFetchMovies(adapter: MoviesAdapter, searchString: String) {
         val retrofit = createRetrofitInstance()
         val omdbService = retrofit.create(omniDBService::class.java)
 
         coroutineScope.launch {
             try {
-                val response = omdbService.getMovies("Spider", API_KEY).await()
+                val response = omdbService.getMovies(searchString, API_KEY).await()
                 val movieSearchItems = response.Search ?: emptyList()
                 val updatedMovieSearchItems = fetchMovieDetailsForItems(movieSearchItems)
                 adapter.submitList(updatedMovieSearchItems)

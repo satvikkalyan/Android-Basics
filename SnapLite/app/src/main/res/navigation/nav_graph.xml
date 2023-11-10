@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/navigation_graph"
+    app:startDestination="@id/lightSensorFragment">
+
+    <fragment
+        android:id="@+id/lightSensorFragment"
+        android:name="edu.iu.habahram.sensorssample.LightSensorFragment"
+        android:label="LightSensorFragment"
+        tools:layout= "@layout/fragment_light_sensor"
+        >
+        <action
+            android:id="@+id/action_lightSensorFragment_to_takePhotoFragment"
+            app:destination="@id/takePhotoFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/takePhotoFragment"
+        android:name="edu.iu.habahram.sensorssample.TakePhotoFragment"
+        android:label="TakePhotoFragment"
+        tools:layout= "@layout/fragment_take_photo"
+        >
+        <action
+            android:id="@+id/action_takePhotoFragment_to_lightSensorFragment"
+            app:destination="@id/lightSensorFragment" />
+    </fragment>
+</navigation>
